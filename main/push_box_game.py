@@ -24,16 +24,17 @@ class PushBoxGame:
         self.wall_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'wall.png')))
         self.human_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'human.png')))
 
+        # #:wall -:whitespace B:box H:human T:target
         self.map = [
-            "#####OOOO",
-            "#OOO#OOOO",
-            "#OOO#O###",
-            "#OOO#O#T#",
-            "#OOO###T#",
-            "###OOOOT#",
-            "O#OOO#OO#",
-            "O#OOO####",
-            "O#####OOO"
+            "#####----",
+            "#H--#----",
+            "#-BB#-###",
+            "#-B-#-#T#",
+            "###-###T#",
+            "-##----T#",
+            "-#---#--#",
+            "-#---####",
+            "-#####---"
         ]
 
         self.silent_mode = silent_mode
@@ -66,16 +67,10 @@ class PushBoxGame:
         self.reset()
 
     def reset(self):
-        self.human = (1, 1)
-        self.box = [(2, 2), (2, 3), (3, 2)]
-        self.target = [(3, 7), (4, 7), (5, 7)]
-        self.wall = list(set([(r, c) for r in range(0, 5) for c in [0, 4]] +
-                             [(0, c) for c in range(0, 5)] +
-                             [(r, 1) for r in range(4, 9)] +
-                             [(2, 6), (2, 7), (3, 6), (4, 6), (4, 5), (4, 2), (5, 2), (6, 5)] +
-                             [(8, c) for c in range(1, 6)] +
-                             [(7, c) for c in range(5, 9)] +
-                             [(r, 8) for r in range(2, 8)]))
+        self.human = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if char == "H"][0]
+        self.box = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if char == "B"]
+        self.target = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if char == "T"]
+        self.wall = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if char == "#"]
         self.direction = "DOWN"  # Human starts downward in each round
         self.score = 0
 
