@@ -9,7 +9,7 @@ os.environ['PYTHON_CONFIGURE_OPTS'] = '--enable-shared'
 
 
 class PushBoxGame:
-    def __init__(self, seed=0, board_size=12, silent_mode=True):
+    def __init__(self, seed=0, board_size=12, silent_mode=True, map='demo.txt'):
         self.board_size = board_size
         self.grid_size = self.board_size ** 2
         self.cell_size = 40
@@ -25,17 +25,19 @@ class PushBoxGame:
         self.human_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'human.png')))
 
         # #:wall -:whitespace B:box H:human T:target
-        self.map = [
-            "#####----",
-            "#H--#----",
-            "#-BB#-###",
-            "#-B-#-#T#",
-            "###-###T#",
-            "-##----T#",
-            "-#---#--#",
-            "-#---####",
-            "-#####---"
-        ]
+        # self.map = [
+        #     "#####----",
+        #     "#H--#----",
+        #     "#-BB#-###",
+        #     "#-B-#-#T#",
+        #     "###-###T#",
+        #     "-##----T#",
+        #     "-#---#--#",
+        #     "-#---####",
+        #     "-#####---"
+        # ]
+        map_file = open(self._get_resouce_path(os.path.join('map', map)), 'r')
+        self.map = map_file.read().splitlines()
 
         self.silent_mode = silent_mode
         if not silent_mode:
