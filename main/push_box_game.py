@@ -36,8 +36,8 @@ class PushBoxGame:
         #     "-#---####",
         #     "-#####---"
         # ]
-        map_file = open(self._get_resouce_path(os.path.join('map', map)), 'r')
-        self.map = map_file.read().splitlines()
+        with open(self._get_resouce_path(os.path.join('map', map)), 'r') as map_file:
+            self.map = map_file.read().splitlines()
 
         self.silent_mode = silent_mode
         if not silent_mode:
