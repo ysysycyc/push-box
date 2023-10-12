@@ -59,6 +59,7 @@ class PushBoxGame:
         self.box = None
         self.target = None
         self.wall = None
+        self.button_rect_dict = {}
 
         self.direction = None
         self.score = 0
@@ -157,7 +158,7 @@ class PushBoxGame:
 
         self.screen.fill((0, 0, 0))
         self.screen.blit(title_text, (self.display_width // 2 - title_text.get_width() // 2, self.display_height // 4))
-        self.draw_button_text(start_button_text, (self.display_width // 2, self.display_height // 2))
+        self.draw_button_text(start_button_text, (self.display_width // 2, self.display_height // 2), "start")
         pygame.display.update()
 
     def draw_game_over_screen(self):
@@ -170,27 +171,20 @@ class PushBoxGame:
                          (self.display_width // 2 - game_over_text.get_width() // 2, self.display_height // 4))
         self.screen.blit(final_score_text, (self.display_width // 2 - final_score_text.get_width() // 2,
                                             self.display_height // 4 + final_score_text.get_height() + 10))
-        self.draw_button_text(retry_button_text, (self.display_width // 2, self.display_height // 2))
+        self.draw_button_text(retry_button_text, (self.display_width // 2, self.display_height // 2), "retry")
         pygame.display.update()
 
-    def draw_button_text(self, button_text_str, pos, hover_color=(255, 255, 255), normal_color=(100, 100, 100)):
+    def draw_button_text(self, button_text_str, pos, button_name, hover_color=(255, 255, 255), normal_color=(100, 100, 100)):
         mouse_pos = pygame.mouse.get_pos()
         button_text = self.font.render(button_text_str, True, normal_color)
-        text_rect = button_text.get_rect(center=pos)
+        self.button_rect_dict[button_name] = button_text.get_rect(center=pos)
 
-        if text_rect.collidepoint(mouse_pos):
+        if self.button_rect_dict[button_name].collidepoint(mouse_pos):
             colored_text = self.font.render(button_text_str, True, hover_color)
         else:
             colored_text = self.font.render(button_text_str, True, normal_color)
 
-        self.screen.blit(colored_text, text_rect)
-
-    def is_mouse_on_button(self, button_text, center):
-        mouse_pos = pygame.mouse.get_pos()
-        text_rect = button_text.get_rect(
-            center=center
-        )
-        return text_rect.collidepoint(mouse_pos)
+        self.screen.blit(colored_text, self.button_rect_dict[button_name])
 
     def render(self):
         self.screen.fill((0, 0, 0))
@@ -223,7 +217,7 @@ class PushBoxGame:
         self.draw_score()
 
         # Draw reset button
-        self.draw_button_text("RESET", (self.display_width - 40, self.display_height - 40))
+        self.draw_button_text("RESET", (self.display_width - 40, self.display_height - 40), "reset")
 
         pygame.display.update()
 
@@ -256,6 +250,7 @@ if __name__ == "__main__":
 
     while True:
         for event in pygame.event.get():
+            mouse_pos = pygame.mouse.get_pos()
             if game_state == "running":
                 if event.type == pygame.KEYDOWN:
                     if event.key in [pygame.K_UP, pygame.K_w]:
@@ -267,10 +262,7 @@ if __name__ == "__main__":
                     elif event.key in [pygame.K_RIGHT, pygame.K_d]:
                         action = 2
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if game.is_mouse_on_button(reset_button, (
-                            game.display_width - 40,
-                            game.display_height - 40,
-                    )):
+                    if game.button_rect_dict["reset"].collidepoint(mouse_pos):
                         game.reset()
                         game_state = "running"
 
@@ -279,18 +271,12 @@ if __name__ == "__main__":
                 sys.exit()
 
             if game_state == "welcome" and event.type == pygame.MOUSEBUTTONDOWN:
-                if game.is_mouse_on_button(start_button, (
-                        game.display_width // 2,
-                        game.display_height // 2,
-                )):
+                if game.button_rect_dict["start"].collidepoint(mouse_pos):
                     action = -1  # Reset action variable when starting a new game
                     game_state = "running"
 
             if game_state == "game_over" and event.type == pygame.MOUSEBUTTONDOWN:
-                if game.is_mouse_on_button(retry_button, (
-                        game.display_width // 2,
-                        game.display_height // 2,
-                )):
+                if game.button_rect_dict["retry"].collidepoint(mouse_pos):
                     game.reset()
                     game_state = "running"
 
