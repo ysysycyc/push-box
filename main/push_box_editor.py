@@ -2,6 +2,7 @@ import os
 import sys
 import pygame
 import util
+from datetime import datetime
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 os.environ['PYTHON_CONFIGURE_OPTS'] = '--enable-shared'
@@ -17,10 +18,14 @@ class PushBoxEditor:
         self.border_size = 20
         self.display_width = self.width + 2 * self.border_size
         self.display_height = self.height + 2 * self.border_size + 40
+
+        pygame.init()
+
         self.screen = pygame.display.set_mode((self.display_width, self.display_height))
 
         pygame.draw.rect(self.screen, (255, 255, 255),
                          (self.border_size - 2, self.border_size - 2, self.width + 4, self.height + 4), 2)
+        self.font = pygame.font.Font(None, 36)
 
         obj_height = self.display_height - self.cell_size // 2 - 10
         self.box_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'box.png')))
@@ -49,11 +54,18 @@ class PushBoxEditor:
         self.target = None
         self.wall = None
         self.current_obj = ""
+        self.button_rect_dict = {}
 
         self.reset()
 
     def reset(self):
         self.map = [["-"] * self.board_size for _ in range(self.board_size)]
+        self.human = None
+        self.box = None
+        self.target = None
+        self.wall = None
+        self.current_obj = ""
+        self.button_rect_dict = {}
 
     def draw_tool(self):
         self.screen.blit(self.box_img, self.box_img_rect)
@@ -67,6 +79,7 @@ class PushBoxEditor:
     def render(self):
         self.screen.fill((0, 0, 0))
         self.draw_tool()
+        self.draw_button()
 
         human_arr = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if char == "H"]
         self.human = human_arr[0] if len(human_arr) > 0 else None
@@ -113,6 +126,29 @@ class PushBoxEditor:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             self.screen.blit(copy_img, (mouse_x - self.cell_size // 2, mouse_y - self.cell_size // 2))
 
+    def draw_button_text(self, button_text_str, pos, button_name, hover_color=(255, 255, 255),
+                         normal_color=(100, 100, 100)):
+        mouse_pos = pygame.mouse.get_pos()
+        button_text = self.font.render(button_text_str, True, normal_color)
+        self.button_rect_dict[button_name] = button_text.get_rect(center=pos)
+
+        if self.button_rect_dict[button_name].collidepoint(mouse_pos):
+            colored_text = self.font.render(button_text_str, True, hover_color)
+        else:
+            colored_text = self.font.render(button_text_str, True, normal_color)
+
+        self.screen.blit(colored_text, self.button_rect_dict[button_name])
+
+    def draw_button(self):
+        self.draw_button_text("SAVE", (self.display_width - 40, self.display_height - 40), "save")
+
+    def save_map(self):
+        current_time = datetime.now()
+        format_current_time = current_time.strftime("%Y%m%d%H%M")
+        map_file = open('map/' + format_current_time + '.txt', 'w')
+        map_file.write('\n'.join([''.join(row) for row in self.map]))
+        map_file.close()
+
 
 if __name__ == "__main__":
     editor = PushBoxEditor()
@@ -121,10 +157,7 @@ if __name__ == "__main__":
     pygame.display.set_caption("Push Box Editor")
     editor.font = pygame.font.Font(None, 36)
 
-    # Two hidden button for start and retry click detection
-    start_button = editor.font.render("START", True, (0, 0, 0))
-    retry_button = editor.font.render("RETRY", True, (0, 0, 0))
-    reset_button = editor.font.render("RESET", True, (0, 0, 0))
+    save_button = editor.font.render("SAVE", True, (0, 0, 0))
 
     editor.draw_tool()
 
@@ -142,6 +175,8 @@ if __name__ == "__main__":
                     editor.current_obj = "H"
                 elif editor.hammer_img_rect.collidepoint(mouse_pos):
                     editor.current_obj = "-"
+                elif editor.button_rect_dict["save"].collidepoint(mouse_pos):
+                    editor.save_map()
                 else:
                     if editor.current_obj != "":
                         grid_x = (mouse_pos[0] - editor.border_size) // editor.cell_size
@@ -157,6 +192,13 @@ if __name__ == "__main__":
 
             if event.type == pygame.MOUSEMOTION:
                 if editor.current_obj != "":
+                    editor.render()
+                else:
+                    editor.draw_button()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    editor.current_obj = ""
                     editor.render()
 
             if event.type == pygame.QUIT:

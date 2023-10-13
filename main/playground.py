@@ -30,3 +30,8 @@ print(map_file.read().splitlines())
 print(util.get_resource_path('map/demo.txt'))
 
 print([["-"] * 3 for _ in range(3)])
+
+from datetime import datetime
+
+current_time = datetime.now()
+print(current_time.strftime("%Y%m%d%H%M"))
