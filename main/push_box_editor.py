@@ -55,6 +55,8 @@ class PushBoxEditor:
         self.wall = None
         self.current_obj = ""
         self.button_rect_dict = {}
+        current_time = datetime.now()
+        self.filename = current_time.strftime("%Y%m%d%H%M")
 
         self.reset()
 
@@ -140,12 +142,10 @@ class PushBoxEditor:
         self.screen.blit(colored_text, self.button_rect_dict[button_name])
 
     def draw_button(self):
-        self.draw_button_text("SAVE", (self.display_width - 40, self.display_height - 40), "save")
+        self.draw_button_text("SAVE", (self.display_width - 40, self.display_height - 30), "save")
 
     def save_map(self):
-        current_time = datetime.now()
-        format_current_time = current_time.strftime("%Y%m%d%H%M")
-        map_file = open('map/' + format_current_time + '.txt', 'w')
+        map_file = open('map/' + self.filename + '.txt', 'w')
         map_file.write('\n'.join([''.join(row) for row in self.map]))
         map_file.close()
 
@@ -156,8 +156,6 @@ if __name__ == "__main__":
     # editor.screen = pygame.display.set_mode((editor.display_width, editor.display_height))
     pygame.display.set_caption("Push Box Editor")
     editor.font = pygame.font.Font(None, 36)
-
-    save_button = editor.font.render("SAVE", True, (0, 0, 0))
 
     editor.draw_tool()
 
