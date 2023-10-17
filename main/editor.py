@@ -1,15 +1,23 @@
 import os
 import sys
-import pygame
-import util
+import time
 from datetime import datetime
+
+import pygame
+
+import chooseMap
+import gameManager
+import util
+from page import Page
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 os.environ['PYTHON_CONFIGURE_OPTS'] = '--enable-shared'
 
 
-class PushBoxEditor:
-    def __init__(self, board_size=12):
+class PushBoxEditor(Page):
+    def __init__(self, game_manager, board_size=12):
+        super().__init__(game_manager, "Push Box Editor")
+
         self.board_size = board_size
         self.grid_size = self.board_size ** 2
         self.cell_size = 40
@@ -18,8 +26,6 @@ class PushBoxEditor:
         self.border_size = 20
         self.display_width = self.width + 2 * self.border_size
         self.display_height = self.height + 2 * self.border_size + 40
-
-        pygame.init()
 
         self.screen = pygame.display.set_mode((self.display_width, self.display_height))
 
@@ -30,23 +36,23 @@ class PushBoxEditor:
         obj_height = self.display_height - self.cell_size // 2 - 10
         self.box_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'box.png')))
         self.box_img_rect = self.box_img.get_rect(
-            center=(self.border_size + self.cell_size, obj_height))
+            center=(self.border_size + self.cell_size + 50, obj_height))
 
         self.target_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'target.png')))
         self.target_img_rect = self.target_img.get_rect(
-            center=(self.border_size + self.cell_size * 2 + 10, obj_height))
+            center=(self.border_size + self.cell_size * 2 + 10 + 50, obj_height))
 
         self.wall_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'wall.png')))
         self.wall_img_rect = self.wall_img.get_rect(
-            center=(self.border_size + self.cell_size * 3 + 10 * 2, obj_height))
+            center=(self.border_size + self.cell_size * 3 + 10 * 2 + 50, obj_height))
 
         self.human_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'human.png')))
         self.human_img_rect = self.human_img.get_rect(
-            center=(self.border_size + self.cell_size * 4 + 10 * 3, obj_height))
+            center=(self.border_size + self.cell_size * 4 + 10 * 3 + 50, obj_height))
 
         self.hammer_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'hammer.png')))
         self.hammer_img_rect = self.hammer_img.get_rect(
-            center=(self.border_size + self.cell_size * 5 + 10 * 4, obj_height))
+            center=(self.border_size + self.cell_size * 5 + 10 * 4 + 50, obj_height))
 
         self.map = []
         self.human = None
@@ -59,6 +65,7 @@ class PushBoxEditor:
         self.filename = current_time.strftime("%Y%m%d%H%M")
 
         self.reset()
+        self.draw_tool()
 
     def reset(self):
         self.map = [["-"] * self.board_size for _ in range(self.board_size)]
@@ -128,79 +135,78 @@ class PushBoxEditor:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             self.screen.blit(copy_img, (mouse_x - self.cell_size // 2, mouse_y - self.cell_size // 2))
 
-    def draw_button_text(self, button_text_str, pos, button_name, hover_color=(255, 255, 255),
-                         normal_color=(100, 100, 100)):
-        mouse_pos = pygame.mouse.get_pos()
-        button_text = self.font.render(button_text_str, True, normal_color)
-        self.button_rect_dict[button_name] = button_text.get_rect(center=pos)
-
-        if self.button_rect_dict[button_name].collidepoint(mouse_pos):
-            colored_text = self.font.render(button_text_str, True, hover_color)
-        else:
-            colored_text = self.font.render(button_text_str, True, normal_color)
-
-        self.screen.blit(colored_text, self.button_rect_dict[button_name])
-
     def draw_button(self):
-        self.draw_button_text("SAVE", (self.display_width - 40, self.display_height - 30), "save")
+        util.draw_button_text(self, "SAVE", (self.display_width - 40, self.display_height - 30), "save")
+        util.draw_button_text(self, "BACK", (40, self.display_height - 30), "back")
 
     def save_map(self):
         map_file = open('map/' + self.filename + '.txt', 'w')
         map_file.write('\n'.join([''.join(row) for row in self.map]))
         map_file.close()
+        # save screenshot
+        rect = pygame.Rect(self.border_size - 2, self.border_size - 2, self.width + 4, self.height + 4)
+        screenshot = self.screen.subsurface(rect)
+        pygame.image.save(screenshot, 'map_screenshot/' + self.filename + '.png')
+
+    def start(self):
+        status = "running"
+        update_interval = 0.15
+        start_time = time.time()
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = pygame.mouse.get_pos()
+                    if self.box_img_rect.collidepoint(mouse_pos):
+                        self.current_obj = "B"
+                    elif self.target_img_rect.collidepoint(mouse_pos):
+                        self.current_obj = "T"
+                    elif self.wall_img_rect.collidepoint(mouse_pos):
+                        self.current_obj = "#"
+                    elif self.human_img_rect.collidepoint(mouse_pos):
+                        self.current_obj = "H"
+                    elif self.hammer_img_rect.collidepoint(mouse_pos):
+                        self.current_obj = "-"
+                    elif self.button_rect_dict["save"].collidepoint(mouse_pos):
+                        self.save_map()
+                    elif self.button_rect_dict["back"].collidepoint(mouse_pos):
+                        status = "stop"
+                        self.game_manager.direct_page(chooseMap.PushBoxChooseMap(self.game_manager))
+                    else:
+                        if self.current_obj != "":
+                            grid_x = (mouse_pos[0] - self.border_size) // self.cell_size
+                            grid_y = (mouse_pos[1] - self.border_size) // self.cell_size
+                            if self.current_obj == "H":
+                                human_arr = [(i, j) for i, row in enumerate(self.map) for j, char in enumerate(row) if
+                                             char == "H"]
+                                for (i, j) in human_arr:
+                                    self.map[i][j] = "-"
+                            if grid_y < self.board_size and grid_x < self.board_size:
+                                self.map[grid_y][grid_x] = self.current_obj
+                                self.render()
+
+                if event.type == pygame.MOUSEMOTION:
+                    if self.current_obj != "":
+                        if time.time() - start_time >= update_interval:
+                            self.render()
+                            start_time = time.time()
+                    else:
+                        self.draw_button()
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.current_obj = ""
+                        self.render()
+
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            pygame.display.update()
+
+            if status != "running":
+                break
 
 
 if __name__ == "__main__":
-    editor = PushBoxEditor()
-    pygame.init()
-    # editor.screen = pygame.display.set_mode((editor.display_width, editor.display_height))
-    pygame.display.set_caption("Push Box Editor")
-    editor.font = pygame.font.Font(None, 36)
-
-    editor.draw_tool()
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                if editor.box_img_rect.collidepoint(mouse_pos):
-                    editor.current_obj = "B"
-                elif editor.target_img_rect.collidepoint(mouse_pos):
-                    editor.current_obj = "T"
-                elif editor.wall_img_rect.collidepoint(mouse_pos):
-                    editor.current_obj = "#"
-                elif editor.human_img_rect.collidepoint(mouse_pos):
-                    editor.current_obj = "H"
-                elif editor.hammer_img_rect.collidepoint(mouse_pos):
-                    editor.current_obj = "-"
-                elif editor.button_rect_dict["save"].collidepoint(mouse_pos):
-                    editor.save_map()
-                else:
-                    if editor.current_obj != "":
-                        grid_x = (mouse_pos[0] - editor.border_size) // editor.cell_size
-                        grid_y = (mouse_pos[1] - editor.border_size) // editor.cell_size
-                        if editor.current_obj == "H":
-                            human_arr = [(i, j) for i, row in enumerate(editor.map) for j, char in enumerate(row) if
-                                         char == "H"]
-                            for (i, j) in human_arr:
-                                editor.map[i][j] = "-"
-                        if grid_y < editor.board_size and grid_x < editor.board_size:
-                            editor.map[grid_y][grid_x] = editor.current_obj
-                            editor.render()
-
-            if event.type == pygame.MOUSEMOTION:
-                if editor.current_obj != "":
-                    editor.render()
-                else:
-                    editor.draw_button()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    editor.current_obj = ""
-                    editor.render()
-
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-        pygame.display.update()
+    gameManager.GameManager().direct_page(PushBoxEditor(gameManager.GameManager()))

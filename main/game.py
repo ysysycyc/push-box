@@ -1,15 +1,24 @@
 import os
 import random
 import sys
+import time
+
 import pygame
 from pygame import mixer
+
+import chooseMap
+import gameManager
+import util
+from page import Page
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 os.environ['PYTHON_CONFIGURE_OPTS'] = '--enable-shared'
 
 
-class PushBoxGame:
-    def __init__(self, seed=0, board_size=12, silent_mode=True, map='demo.txt'):
+class PushBoxGame(Page):
+    def __init__(self, game_manager, seed=0, board_size=12, silent_mode=True, map='demo.txt'):
+        super().__init__(game_manager, "Push Box Game", silent_mode=silent_mode)
+
         self.board_size = board_size
         self.grid_size = self.board_size ** 2
         self.cell_size = 40
@@ -19,10 +28,10 @@ class PushBoxGame:
         self.display_width = self.width + 2 * self.border_size
         self.display_height = self.height + 2 * self.border_size + 40
 
-        self.box_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'box.png')))
-        self.target_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'target.png')))
-        self.wall_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'wall.png')))
-        self.human_img = pygame.image.load(self._get_resouce_path(os.path.join('image', 'human.png')))
+        self.box_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'box.png')))
+        self.target_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'target.png')))
+        self.wall_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'wall.png')))
+        self.human_img = pygame.image.load(util.get_resource_path(os.path.join('image', 'human.png')))
 
         # #:wall -:whitespace B:box H:human T:target
         # self.map = [
@@ -36,21 +45,19 @@ class PushBoxGame:
         #     "-#---####",
         #     "-#####---"
         # ]
-        with open(self._get_resouce_path(os.path.join('map', map)), 'r') as map_file:
+        with open(util.get_resource_path(os.path.join('map', map)), 'r') as map_file:
             self.map = map_file.read().splitlines()
 
         self.silent_mode = silent_mode
         if not silent_mode:
-            pygame.init()
-            pygame.display.set_caption("Push Box Game")
             self.screen = pygame.display.set_mode((self.display_width, self.display_height))
             self.font = pygame.font.Font(None, 36)
 
             # Load sound effects
             mixer.init()
-            self.sound_eat = mixer.Sound(self._get_resouce_path(os.path.join('sound', 'eat.wav')))
-            self.sound_game_over = mixer.Sound(self._get_resouce_path(os.path.join('sound', 'game_over.wav')))
-            self.sound_victory = mixer.Sound(self._get_resouce_path(os.path.join('sound', 'victory.wav')))
+            self.sound_eat = mixer.Sound(util.get_resource_path(os.path.join('sound', 'eat.wav')))
+            self.sound_game_over = mixer.Sound(util.get_resource_path(os.path.join('sound', 'game_over.wav')))
+            self.sound_victory = mixer.Sound(util.get_resource_path(os.path.join('sound', 'victory.wav')))
         else:
             self.screen = None
             self.font = None
@@ -138,28 +145,11 @@ class PushBoxGame:
         elif action == 3:
             self.direction = "DOWN"
 
-    def _get_resouce_path(self, file_path):
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.abspath(".")
-        abs_path = os.path.join(base_path, file_path)
-        print(abs_path)
-        return abs_path
-
     def draw_score(self):
         # count box in target
         score_text = self.font.render(f"Score: {self.score}", True, (255, 255, 255))
-        self.screen.blit(score_text, (self.border_size, self.height + 2 * self.border_size))
-
-    def draw_welcome_screen(self):
-        title_text = self.font.render("PUSH BOX GAME", True, (255, 255, 255))
-        start_button_text = "START"
-
-        self.screen.fill((0, 0, 0))
-        self.screen.blit(title_text, (self.display_width // 2 - title_text.get_width() // 2, self.display_height // 4))
-        self.draw_button_text(start_button_text, (self.display_width // 2, self.display_height // 2), "start")
-        pygame.display.update()
+        self.screen.blit(score_text,
+                         (self.display_width // 2 - score_text.get_width() // 2, self.height + 2 * self.border_size))
 
     def draw_game_over_screen(self):
         game_over_text = self.font.render("GAME OVER", True, (255, 255, 255))
@@ -171,20 +161,8 @@ class PushBoxGame:
                          (self.display_width // 2 - game_over_text.get_width() // 2, self.display_height // 4))
         self.screen.blit(final_score_text, (self.display_width // 2 - final_score_text.get_width() // 2,
                                             self.display_height // 4 + final_score_text.get_height() + 10))
-        self.draw_button_text(retry_button_text, (self.display_width // 2, self.display_height // 2), "retry")
+        util.draw_button_text(self, retry_button_text, (self.display_width // 2, self.display_height // 2), "retry")
         pygame.display.update()
-
-    def draw_button_text(self, button_text_str, pos, button_name, hover_color=(255, 255, 255), normal_color=(100, 100, 100)):
-        mouse_pos = pygame.mouse.get_pos()
-        button_text = self.font.render(button_text_str, True, normal_color)
-        self.button_rect_dict[button_name] = button_text.get_rect(center=pos)
-
-        if self.button_rect_dict[button_name].collidepoint(mouse_pos):
-            colored_text = self.font.render(button_text_str, True, hover_color)
-        else:
-            colored_text = self.font.render(button_text_str, True, normal_color)
-
-        self.screen.blit(colored_text, self.button_rect_dict[button_name])
 
     def render(self):
         self.screen.fill((0, 0, 0))
@@ -215,9 +193,7 @@ class PushBoxGame:
         # Draw score
         self.score = len(set(self.box) & set(self.target)) * 10
         self.draw_score()
-
-        # Draw reset button
-        self.draw_button_text("RESET", (self.display_width - 40, self.display_height - 40), "reset")
+        self.draw_button()
 
         pygame.display.update()
 
@@ -226,72 +202,63 @@ class PushBoxGame:
                 pygame.quit()
                 sys.exit()
 
+    def draw_button(self):
+        util.draw_button_text(self, "BACK", (40, self.display_height - 30), "back")
+        # Draw reset button
+        util.draw_button_text(self, "RESET", (self.display_width - 40, self.display_height - 30), "reset")
 
-if __name__ == "__main__":
-    import time
+    def start(self):
+        game_state = "running"
 
-    seed = random.randint(0, 1e9)
-    game = PushBoxGame(seed=seed, silent_mode=False, board_size=9)
-    pygame.init()
-    game.screen = pygame.display.set_mode((game.display_width, game.display_height))
-    pygame.display.set_caption("Push Box Game")
-    game.font = pygame.font.Font(None, 36)
+        update_interval = 0.1
+        start_time = time.time()
+        action = -1
 
-    game_state = "welcome"
+        while True:
+            for event in pygame.event.get():
+                mouse_pos = pygame.mouse.get_pos()
+                if game_state == "running":
+                    if event.type == pygame.KEYDOWN:
+                        if event.key in [pygame.K_UP, pygame.K_w]:
+                            action = 0
+                        elif event.key in [pygame.K_DOWN, pygame.K_s]:
+                            action = 3
+                        elif event.key in [pygame.K_LEFT, pygame.K_a]:
+                            action = 1
+                        elif event.key in [pygame.K_RIGHT, pygame.K_d]:
+                            action = 2
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        if self.button_rect_dict["reset"].collidepoint(mouse_pos):
+                            self.reset()
+                            game_state = "running"
+                        elif self.button_rect_dict["back"].collidepoint(mouse_pos):
+                            game_state = "stop"
+                            self.game_manager.direct_page(chooseMap.PushBoxChooseMap(self.game_manager))
 
-    # Two hidden button for start and retry click detection
-    start_button = game.font.render("START", True, (0, 0, 0))
-    retry_button = game.font.render("RETRY", True, (0, 0, 0))
-    reset_button = game.font.render("RESET", True, (0, 0, 0))
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
 
-    update_interval = 0.1
-    start_time = time.time()
-    action = -1
-
-    while True:
-        for event in pygame.event.get():
-            mouse_pos = pygame.mouse.get_pos()
-            if game_state == "running":
-                if event.type == pygame.KEYDOWN:
-                    if event.key in [pygame.K_UP, pygame.K_w]:
-                        action = 0
-                    elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                        action = 3
-                    elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                        action = 1
-                    elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                        action = 2
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if game.button_rect_dict["reset"].collidepoint(mouse_pos):
-                        game.reset()
+                if game_state == "game_over" and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.button_rect_dict["retry"].collidepoint(mouse_pos):
+                        self.reset()
                         game_state = "running"
 
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+            if game_state == "game_over":
+                self.draw_game_over_screen()
 
-            if game_state == "welcome" and event.type == pygame.MOUSEBUTTONDOWN:
-                if game.button_rect_dict["start"].collidepoint(mouse_pos):
-                    action = -1  # Reset action variable when starting a new game
-                    game_state = "running"
+            if game_state == 'running':
+                if time.time() - start_time >= update_interval:
+                    done = self.step(action)
+                    self.render()
+                    start_time = time.time()
+                    action = -1
 
-            if game_state == "game_over" and event.type == pygame.MOUSEBUTTONDOWN:
-                if game.button_rect_dict["retry"].collidepoint(mouse_pos):
-                    game.reset()
-                    game_state = "running"
+                    if done:
+                        game_state = "game_over"
 
-        if game_state == "welcome":
-            game.draw_welcome_screen()
 
-        if game_state == "game_over":
-            game.draw_game_over_screen()
-
-        if game_state == 'running':
-            if time.time() - start_time >= update_interval:
-                done = game.step(action)
-                game.render()
-                start_time = time.time()
-                action = -1
-
-                if done:
-                    game_state = "game_over"
+if __name__ == "__main__":
+    seed = random.randint(0, 1e9)
+    gameManager.GameManager().direct_page(
+        PushBoxGame(gameManager.GameManager(), seed=seed, silent_mode=False, board_size=9))
